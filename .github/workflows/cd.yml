@@ -1,0 +1,28 @@
+name: CD
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+
+jobs:
+  deploy:
+    name: Deploy na EC2
+    if: github.event.workflow_run.conclusion == 'success'
+    runs-on: self-hosted
+    env:
+      IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/api-cicd-01251047:latest
+      CONTAINER: api-01251047
+    steps:
+      - name: Baixar a imagem
+        run: docker pull "$IMAGE"
+
+      - name: Parar o container atual (se existir)
+        run: docker stop "$CONTAINER" || true
+
+      - name: Remover o container (se existir)
+        run: docker rm "$CONTAINER" || true
+
+      - name: Rodar o container com a nova imagem
+        run: docker run -d --name "$CONTAINER" -p 8080:8080 --restart unless-stopped "$IMAGE"
